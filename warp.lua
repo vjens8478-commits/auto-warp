@@ -1,6 +1,7 @@
 -- Services
 local TextChatService = game:GetService("TextChatService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -8,7 +9,7 @@ local LocalPlayer = Players.LocalPlayer
 -- Konfigurasi
 local message = "/warp kfns:wawa"
 
--- Hapus GUI lama jika script dijalankan ulang (biar tidak numpuk/double)
+-- Hapus GUI lama jika script dijalankan ulang
 if LocalPlayer.PlayerGui:FindFirstChild("AutoWarpHub") then
     LocalPlayer.PlayerGui.AutoWarpHub:Destroy()
 end
@@ -99,24 +100,45 @@ local openCorner = Instance.new("UICorner")
 openCorner.CornerRadius = UDim.new(0, 22)
 openCorner.Parent = openBtn
 
--- Fungsi Kirim Chat
-local function sendChat()
+-- Fungsi Kirim Chat Serbaguna
+local function sendWarpChat()
+    -- Percobaan 1: Menggunakan RemoteEvent Legacy Chat
+    local sayMessage = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents") 
+        and ReplicatedStorage.DefaultChatSystemChatEvents:FindFirstChild("SayMessageRequest")
+    
+    if sayMessage then
+        sayMessage:FireServer(message, "All")
+    end
+
+    -- Percobaan 2: Menggunakan TextChatService (Modern Chat)
     if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
         local generalChannel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
         if generalChannel then
             generalChannel:SendAsync(message)
         end
-    else
-        ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(message, "All")
     end
+
+    -- Percobaan 3: Simulasi Membuka Chat Bar & Kirim Teks
+    task.spawn(function()
+        local chatBar = LocalPlayer.PlayerGui:FindFirstChild("ChatBar", true) 
+                     or CoreGui:FindFirstChild("ChatBar", true)
+        
+        if chatBar and chatBar:IsA("TextBox") then
+            chatBar:CaptureFocus()
+            chatBar.Text = message
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+            chatBar:ReleaseFocus()
+        end
+    end)
 end
 
 -- Aksi Tombol Warp
 warpBtn.MouseButton1Click:Connect(function()
     warpBtn.BackgroundColor3 = Color3.fromRGB(35, 200, 35)
-    warpBtn.Text = "SENT!"
+    warpBtn.Text = "WARPING..."
     
-    sendChat()
+    sendWarpChat()
     
     task.wait(0.4)
     warpBtn.BackgroundColor3 = Color3.fromRGB(200, 35, 35)
